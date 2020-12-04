@@ -4,6 +4,13 @@
 
 #define ERR_NO_ERROR 0
 #define ERR_UNKNOWN_CMD 1
+#define WRONG_PARAM 2
+#define PARAM_OUT_OF_RANGE 3
+#define BUFFER_OVER_FLOW 4
+#define CN_NOT_SELECT 5
+
+
+
 
 #define WRONG_CMD_ID 0
 #define REQ_IDN_ID 1

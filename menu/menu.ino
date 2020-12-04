@@ -8,18 +8,22 @@
 
 
 unsigned char cur_mac[6] = { 0x00, 0xAA, 0xBB, 0xCC, 0xDA, 0x02 };
-unsigned char cur_ip[4] = { 192, 168, 0, 101 };
-unsigned char cur_gateway[4] = { 192, 168, 5, 1 };
+unsigned char cur_ip[4] = { 192, 168, 88, 87 };
+unsigned char cur_gateway[4] = { 192, 168, 88, 1 };
 unsigned char cur_subnet[4] = { 255, 255, 255, 0 };
 String idn_string = "Forming Command, 1,--, ver 1.0";
 
 unsigned char rcvd_cmd_id;
-unsigned char rcvd_parameter[6];
+unsigned int rcvd_parameter[17];
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 shButton btn1(BTN1, PULL_DOWN);
 shButton btn2(BTN2, PULL_DOWN);
 shButton btn3(BTN3, PULL_DOWN);
+
+/*shButton btn1(BTN1, PULL_UP);
+  shButton btn2(BTN2, PULL_UP);
+  shButton btn3(BTN3, PULL_UP);*/
 
 core my_core;
 
@@ -63,13 +67,14 @@ void setup() {
   lcd.print("COMMANDS");
   delay(3000);
   lcd.clear();
-  Serial.begin(9600);
+  //Serial.begin(9600);
   config_lan();
 }
 
 void loop() {
   my_core.update();
   printCorsor(corsor_pos); // отрисовка курсора
+  RELAYDRIVE(my_core.channel);
   lcd.setCursor(1, 0);
   lcd.print("SELECT:");
   lcd.setCursor(8, 0);
@@ -179,94 +184,152 @@ void loop() {
       }
   }
   String text;
+
   char state;
   if (check_lan()) {
-    Serial.println("LAN START");
+    // Serial.println("LAN START");
     //delay (1000);
     state = check_cmd(&rcvd_cmd_id, &rcvd_parameter[0]);
     switch (rcvd_cmd_id) {
       case REQ_OUT_PULSEWIDTH_ID:
         text = String(my_core.pulse);
         send_str_to_lan(&text);
-        Serial.println("1");
+        //Serial.println(my_core.pulse);
+        //Serial.println("PULSE?");
         break;
+      ////////////////
       case CMD_OUT_PULSEWIDTH_ID:
-        lcd.setCursor(10, 1);
-        lcd.print(" ");
-        my_core.pulse = rcvd_parameter[0];
-        Serial.println(rcvd_parameter[0]);
-        Serial.println("2");
+        if (rcvd_parameter[0] > 200 || rcvd_parameter[0] < 30) {
+          lcd.setCursor(10, 1);
+          lcd.print(" ");
+          text = "Param";
+          send_str_to_lan(&text);
+          //Serial.println(rcvd_parameter[0]);
+          //Serial.println("ER PULSE");
+        }
+        else {
+          lcd.setCursor(10, 1);
+          lcd.print(" ");
+          my_core.pulse = rcvd_parameter[0];
+          // Serial.println("PULSE SET");
+        }
         break;
+      /////////////////
       case CMD_SET_IP_ADDR_ID:
-        Serial.println("3");
+        if (updateIPaddr(rcvd_parameter)) {
+          store_data(cur_mac, cur_ip, cur_gateway, cur_subnet);
+          /*Serial.println(rcvd_parameter[0]);
+            Serial.print(cur_ip[0]);
+            Serial.print(cur_ip[1]);
+            Serial.print(cur_ip[2]);
+            Serial.println(cur_ip[3]);*/
+        }
+        else {
+          //Serial.println("ERIP");
+        }
         break;
+      /////////////////////
+      case CMD_SET_IP_MASK_ID:
+        if (updateIPmask(rcvd_parameter)) {
+          store_data(cur_mac, cur_ip, cur_gateway, cur_subnet);
+          /*Serial.print(cur_subnet[0]);
+            Serial.print(cur_subnet[1]);
+            Serial.print(cur_subnet[2]);
+            Serial.println(cur_subnet[3]);*/
+        }
+        else {
+          //Serial.println("ERIPMASK");
+        }
+        break;
+      //////////////
+      case CMD_SET_DEF_GATEWAY_ID:
+        if (updateIPgateway(rcvd_parameter)) {
+          store_data(cur_mac, cur_ip, cur_gateway, cur_subnet);
+          /* Serial.print(cur_gateway[0]);
+            Serial.print(cur_gateway[1]);
+            Serial.print(cur_gateway[2]);
+            Serial.println(cur_gateway[3]);*/
+        }
+        else {
+          //Serial.println("ERIPGATEWAY");
+        }
+        break;
+      ////////////////////////
       case REQ_IDN_ID:
         send_str_to_lan(&idn_string);
-        Serial.println("4");
+        //Serial.println("IDN?");
         break;
       case CMD_IN_SELECT0_ID:
         my_core.channel = 0;
-        Serial.println("5");
-
+        //Serial.println(" SELECT 0");
         break;
+      ////////////////////////////
       case CMD_IN_SELECT1_ID:
         my_core.channel = 1;
-        Serial.println("6");
-
+        //Serial.println("SELECT 1");
         break;
+      ////////////////////////
       case CMD_IN_SELECT2_ID:
         my_core.channel = 2;
-        Serial.println("7");
-
+        //Serial.println("SELECT 2");
         break;
+      ////////////////////////
       case CMD_IN_SELECT3_ID:
         my_core.channel = 3;
-        Serial.println("8");
-
+        //Serial.println("SELECT 3");
         break;
+      ////////////////////
       case CMD_IN_SELECT4_ID:
         my_core.channel = 4;
-        Serial.println("9");
-
+        // Serial.println("SELECT 4");
         break;
+      /////////////////////
       case REQ_IN_SELECT_ID:
         text = String(my_core.channel);
         send_str_to_lan(&text);
-        Serial.println("10");
+        // Serial.println("REQ_SELECT");
         break;
-
+      ///////////////////
       case CMD_IN_START_ID:
         lcd.clear();
         lcd.setCursor(5, 0);
         lcd.print("START");
+        START(my_core.channel, my_core.pulse);
         delay(2000);
-        Serial.println("11");
+        //Serial.println("START");
         break;
+      ///////////////////////
       case REQ_SET_MAC_ADDR_ID:
-        text = String(cur_mac[0], HEX) + ":" +  String(cur_mac[1], HEX) + ":" +  String(cur_mac[2], HEX) + ":" +  String(cur_mac[3], HEX) + ":" +  String(cur_mac[4], HEX) + ":" +  String(cur_mac[5], HEX);
+        text = (String(cur_mac[0], HEX) + ":" +  String(cur_mac[1], HEX) + ":" +  String(cur_mac[2], HEX) + ":" +  String(cur_mac[3], HEX) + ":" +  String(cur_mac[4], HEX) + ":" +  String(cur_mac[5], HEX));
         send_str_to_lan(&text);
-        Serial.println("11");
+        //Serial.println("11");
         break;
+      ////////////////////////
       case REQ_SET_IP_ADDR_ID:
         text = String(cur_ip[0]) + "." + String(cur_ip[1]) + "." + String(cur_ip[2]) + "." + String(cur_ip[3]);
         send_str_to_lan(&text);
-        Serial.println("12");
+        //Serial.println("12");
         break;
+      /////////////////////////
       case REQ_SET_IP_MASK_ID:
         text = String(cur_subnet[0]) + "." + String(cur_subnet[1]) + "." + String(cur_subnet[2]) + "." + String(cur_subnet[3]);
         send_str_to_lan(&text);
-        Serial.println("13");
+        // Serial.println("13");
         break;
+      /////////////////////////
       case REQ_SET_DEF_GATEWAY_ID:
         text = String(cur_gateway[0]) + "." + String(cur_gateway[1]) + "." + String(cur_gateway[2]) + "." + String(cur_gateway[3]);
         send_str_to_lan(&text);
-        Serial.println("14");
+        //Serial.println("14");
         break;
+      /////////////
       default:
-        Serial.println("DEF");
+        text = "WrongCommand";
+        send_str_to_lan(&text);
+        //Serial.println("DEFAULT");
         break;
     }
-    Serial.println("LAN END");
+    //Serial.println("LAN END");
   }
   //Serial.println("LOOP END");
 
@@ -340,60 +403,84 @@ void printCorsor(uint8_t str) {  // функция отрисовки курсо
 
 
 void config_lan(void) {
+  if (digitalRead(BTN2) == HIGH) { // default settings
+    store_data(cur_mac, cur_ip, cur_gateway, cur_subnet);
+  }
+  recall_data(cur_mac, cur_ip, cur_gateway, cur_subnet);
   server_start(cur_mac, cur_ip, cur_gateway, cur_subnet);
 
-  String text;
-  text = String(cur_ip[0]) + "." + String(cur_ip[1]) + "." + String(cur_ip[2]) + "." + String(cur_ip[3]);
+  String text1;
+  text1 = String(cur_ip[0]) + "." + String(cur_ip[1]) + "." + String(cur_ip[2]) + "." + String(cur_ip[3]);
   lcd.setCursor(0, 0);
-  lcd.print(text);
-  text = String(cur_subnet[0]) + "." + String(cur_subnet[1]) + "." + String(cur_subnet[2]) + "." + String(cur_subnet[3]);
+  lcd.print(text1);
+  text1 = String(cur_subnet[0]) + "." + String(cur_subnet[1]) + "." + String(cur_subnet[2]) + "." + String(cur_subnet[3]);
   lcd.setCursor(0, 1);
-  lcd.print(text);
+  lcd.print(text1);
   delay(2000);
   lcd.clear();
 }
-void START(uint8_t ch, int pl) {
+
+void START(unsigned char ch, unsigned int pl) {
   switch (ch) {
     case 0:
       break;
     case 1:
-      PULSEDELAY(pl, SW1, OPTORELAY1);
+      PULSEDELAY(pl, OPTORELAY1);
       break;
     case 2:
-      PULSEDELAY(pl, SW2, OPTORELAY2);
+      PULSEDELAY(pl, OPTORELAY2);
       break;
     case 3:
-
-      PULSEDELAY(pl, SW3, OPTORELAY3);
+      PULSEDELAY(pl, OPTORELAY3);
       break;
     case 4:
-      PULSEDELAY(pl, SW4, OPTORELAY4);
+      PULSEDELAY(pl, OPTORELAY4);
       break;
-
   }
-
 }
 
-/*void PULSEWIDTH(uint8_t pul, uint8_t sw) {
-  uint32_t tim = 0;
-  digitalWrite(sw, HIGH);
-  tim = millis();
-  if (millis() - tim >= pul) {
-    digitalWrite(sw, LOW);
-    tim += pul;
+void RELAYDRIVE(unsigned char channel) {
+  switch (channel) {
+    case 0:
+      digitalWrite(SW2, LOW);
+      digitalWrite(SW3, LOW);
+      digitalWrite(SW4, LOW);
+      digitalWrite(SW1, LOW);
+      break;
+    case 1:
+      digitalWrite(SW2, LOW);
+      digitalWrite(SW3, LOW);
+      digitalWrite(SW4, LOW);
+      digitalWrite(SW1, HIGH);
+      break;
+    case 2:
+      digitalWrite(SW1, LOW);
+      digitalWrite(SW3, LOW);
+      digitalWrite(SW4, LOW);
+      digitalWrite(SW2, HIGH);
+      break;
+    case 3:
+      digitalWrite(SW1, LOW);
+      digitalWrite(SW2, LOW);
+      digitalWrite(SW4, LOW);
+      digitalWrite(SW3, HIGH);
+      break;
+    case 4:
+      digitalWrite(SW1, LOW);
+      digitalWrite(SW2, LOW);
+      digitalWrite(SW3, LOW);
+      digitalWrite(SW4, HIGH);
+      break;
   }
+}
 
-  }*/
-
-void PULSEDELAY(int p, uint8_t opt, uint8_t sw) {
-  digitalWrite(sw, HIGH);
+void PULSEDELAY(unsigned int p, int opt) {
   digitalWrite(opt, HIGH);
   delay(p);
   digitalWrite(opt, LOW);
-  digitalWrite(sw, LOW);
 }
 
-bool updateMAC(char *buf) {
+/*bool updateMAC(char *buf) {
   char *rez = cur_mac;
   unsigned char numb;
   bool next_char, end_of_string;
@@ -426,7 +513,7 @@ bool updateMAC(char *buf) {
       }
       if (end_of_string) {  // Символ конча строки
         if (i == 5 && j != 0) { // Если считаны 6 символов
-          *rez = data;
+           rez = data;
           return true;
         }
         else {
@@ -437,7 +524,7 @@ bool updateMAC(char *buf) {
       if (next_char) {
         if (j != 0) {
           if (data < 256) {
-            *rez = data;
+             rez = data;
             rez++;
             break;
           }
@@ -456,21 +543,22 @@ bool updateMAC(char *buf) {
 
   }
   return true;
-}
+  }*/
 
-bool updateIPaddr(char *buf) {
+bool updateIPaddr(unsigned int *buf) {
   return parseTCPIP(buf, cur_ip);
 }
 
-bool updateIPmask(char *buf) {
+bool updateIPmask(unsigned int *buf) {
+  store_data(cur_mac, cur_ip, cur_gateway, cur_subnet);
   return parseTCPIP(buf, cur_subnet);
 }
 
-bool updateIPgateway(char *buf) {
+bool updateIPgateway(unsigned int *buf) {
   return parseTCPIP(buf, cur_gateway);
 }
 
-bool parseTCPIP(char *buf, unsigned char *rez) {
+bool parseTCPIP(unsigned int *buf, unsigned char *rez) {
   int data;
   char i, j;
   for (i = 0; i < 4; i++) {
@@ -504,7 +592,7 @@ bool parseTCPIP(char *buf, unsigned char *rez) {
   return true;
 }
 
-void updateIDN(char *buf) {
+/*void updateIDN(char *buf) {
   String *idn_pntr = &idn_string;
   for (char i; i < IDN_MAX_LENGHT; i++) {
     if (buf == 0) {
@@ -517,4 +605,4 @@ void updateIDN(char *buf) {
       buf++;
     }
   }
-}
+}*/

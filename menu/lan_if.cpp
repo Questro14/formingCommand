@@ -14,6 +14,7 @@ char rx_buf[255];
 char prx_buf = 0;
 char last_rx_byte, rx_byte;
 
+
 bool check_lan(void) {
 
   client = server.available();
@@ -50,7 +51,7 @@ bool check_lan(void) {
 void server_stop(void) {
   client.stop();
 }
-char check_cmd(unsigned char *cmd_id, unsigned char *parameter) {
+char check_cmd(unsigned char *cmd_id, unsigned int *parameter) {
   prx_buf = 0;
   toUpCase(rx_buf);
 
@@ -65,34 +66,46 @@ char check_cmd(unsigned char *cmd_id, unsigned char *parameter) {
     return ERR_NO_ERROR;
   }
   //////////////////////////////////////////////////
-    if (compStr(rx_buf, CMD_SET_MAC_ADDR )) {
-      Serial.println("Set MAC address");
-      return ERR_NO_ERROR;
-    }
+  if (compStr(rx_buf, CMD_SET_MAC_ADDR )) {
+    //Serial.println("Set MAC address");
+    return ERR_NO_ERROR;
+  }
   if (compStr(rx_buf, REQ_SET_MAC_ADDR )) {
     *cmd_id = REQ_SET_MAC_ADDR_ID;
     return ERR_NO_ERROR;
   }
-    if (compStr(rx_buf, CMD_SET_IP_ADDR )) {
-      Serial.println("Set IP address");
-      return ERR_NO_ERROR;
+  if (compStr(rx_buf, CMD_SET_IP_ADDR )) {
+    *cmd_id = CMD_SET_IP_ADDR_ID;
+    for (int w = 0; w < 15; w++) {
+      parameter[w] = rx_buf[w + 18];
     }
+   // Serial.println("Set IP address");
+    return ERR_NO_ERROR;
+  }
   if (compStr(rx_buf, REQ_SET_IP_ADDR )) {
     *cmd_id = REQ_SET_IP_ADDR_ID;
     return ERR_NO_ERROR;
   }
-    if (compStr(rx_buf, CMD_SET_IP_MASK )) {
-      Serial.println("Set IP mask");
-      return ERR_NO_ERROR;
+  if (compStr(rx_buf, CMD_SET_IP_MASK )) {
+    *cmd_id = CMD_SET_IP_MASK_ID;
+    for (int w = 0; w < 15; w++) {
+      parameter[w] = rx_buf[w + 15];
     }
+    //Serial.println("Set IP mask");
+    return ERR_NO_ERROR;
+  }
   if (compStr(rx_buf, REQ_SET_IP_MASK )) {
     *cmd_id = REQ_SET_IP_MASK_ID;
     return ERR_NO_ERROR;
   }
-    if (compStr(rx_buf, CMD_SET_DEF_GATEWAY )) {
-      Serial.println("Set def gateway");
-      return ERR_NO_ERROR;
+  if (compStr(rx_buf, CMD_SET_DEF_GATEWAY )) {
+    *cmd_id = CMD_SET_DEF_GATEWAY_ID;
+    for (int w = 0; w < 15; w++) {
+      parameter[w] = rx_buf[w + 21];
     }
+    //Serial.println("Set def gateway");
+    return ERR_NO_ERROR;
+  }
   if (compStr(rx_buf, REQ_SET_DEF_GATEWAY )) {
     *cmd_id = REQ_SET_DEF_GATEWAY_ID;
     return ERR_NO_ERROR;
@@ -102,8 +115,8 @@ char check_cmd(unsigned char *cmd_id, unsigned char *parameter) {
     return ERR_NO_ERROR;
   }
   if (compStr(rx_buf, CMD_OUT_PULSEWIDTH)) {
-    *cmd_id = CMD_OUT_PULSEWIDTH_ID;
-    *parameter = parStr(&rx_buf[18]);
+    *cmd_id = CMD_OUT_PULSEWIDTH_ID;  
+    *parameter = parStrPulse(&rx_buf[19]);
     return ERR_NO_ERROR;
   }
   if (compStr(rx_buf, REQ_OUT_PULSEWIDTH)) {
@@ -143,6 +156,7 @@ char check_cmd(unsigned char *cmd_id, unsigned char *parameter) {
   *cmd_id = WRONG_CMD_ID;
   return ERR_UNKNOWN_CMD;
 }
+
 
 
 
@@ -186,30 +200,21 @@ unsigned char parStr(char *buf) {
   }
   return rez;
 }
+unsigned int parStrPulse(char *buf) {
+  unsigned char numb;
+  unsigned int rez = 0;
 
-bool parIP(char *buf, char *res) {
   for (int i = 0; i < 3; i++) {
-    *res = parStr(buf);
-    if (*res < 10) {
-      buf++;
+    numb = *buf - 48;
+    if (numb > 9) {
+      return rez;
     }
     else {
-      if (*res < 100) {
-        buf = buf + 2;
-      }
-      else {
-        buf = buf + 3;
-      }
+      rez = (rez << 1) + (rez << 3)  + numb;
     }
-    if (*buf == 46) {
-      buf++;
-    }
-    else {
-      return false;
-    }
+    buf++;
   }
-  *res = parStr(buf);
-  return true;
+  return rez;
 }
 
 void toUpCase(char *buf) {

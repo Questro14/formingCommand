@@ -1,10 +1,11 @@
 #include "core.h"
 #include <arduino.h>
+#include "formingCommands.h"
 
 core::core(void) {
   channel = 0;
   pulse = 30;
-  error = 0;
+  error = ERR_NO_ERROR;
 }
 
 void core::update(void) {

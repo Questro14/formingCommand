@@ -3,9 +3,9 @@
 
 class core{
   public:
-  int channel;
-  int pulse;
-  int error;
+  unsigned char channel;
+  unsigned int pulse;
+  unsigned int error;
 
   core(void);
   void update(void);

@@ -13,7 +13,7 @@
 #define IDN_MAX_LENGHT 32
 
 void store_data(unsigned char *mac, unsigned char *ip, unsigned char *gateway, unsigned char *subnet);
-bool recall_data(unsigned char *mac, unsigned char *ip, unsigned char *gateway, unsigned char *subnet);
+void recall_data(unsigned char *mac, unsigned char *ip, unsigned char *gateway, unsigned char *subnet);
 void store_idn(char *idn_string);
 bool recall_idn(char *idn_string);
 

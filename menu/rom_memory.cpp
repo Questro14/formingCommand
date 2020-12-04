@@ -50,9 +50,10 @@ char data;
   return true;
 }
 
-bool recall_data(unsigned char *mac, unsigned char *ip, unsigned char *gateway, unsigned char *subnet){
+void recall_data(unsigned char *mac, unsigned char *ip, unsigned char *gateway, unsigned char *subnet){
 	if(EEPROM.read(MARKER_ADDRESS) != MARKER_VALUE){
-		return false;
+		//return false;
+   // Serial.println("false");
 	}
 	else{
     *mac++ = EEPROM.read(MAC_ADDRESS+0);
@@ -73,6 +74,7 @@ bool recall_data(unsigned char *mac, unsigned char *ip, unsigned char *gateway, 
     *subnet++ = EEPROM.read(SUBNET_ADDRESS+1);
     *subnet++ = EEPROM.read(SUBNET_ADDRESS+2);
     *subnet = EEPROM.read(SUBNET_ADDRESS+3);
-    return true;
+    //return true;
+    //Serial.println("true");
 	}
 }
